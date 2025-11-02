@@ -1,17 +1,7 @@
-const Transaction = require("../models/Transaction");
-const Customer = require("../models/Customer");
-const Product = require("../models/Product");
-const History = require("../models/History");
+const { Transaction, Customer, Product, History } = require("../models");
 const { diff_seconds } = require("../helpers/date");
 
 const findWaitingList = async (card) => {
-  Transaction.belongsTo(Product, {
-    foreignKey: "product_id",
-  });
-  Transaction.belongsTo(Customer, {
-    foreignKey: "customer_id",
-  });
-
   let msg;
   // status 3 done excuted, wait for reply
   await Transaction.findOne({

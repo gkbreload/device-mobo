@@ -1,13 +1,6 @@
-const Product = require("../models/Product");
-const Supplier = require("../models/Supplier");
-const Device = require("../models/Device");
-const History = require("../models/History");
-const Transaction = require("../models/Transaction");
+const { Product, Supplier, Device, History, Transaction } = require("../models");
 
 async function getMobo(userID, resCust, receiver, sender, message, m, method) {
-  Supplier.hasMany(Device, {
-    foreignKey: "supplier_id",
-  });
   await History.create(
     {
       name: resCust?.Customer?.name,

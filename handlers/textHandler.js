@@ -1,14 +1,9 @@
 const { Op } = require("sequelize");
-const Product = require("../models/Product");
-const Transaction = require("../models/Transaction");
-const Customer = require("../models/Customer");
-const History = require("../models/History");
+const { Product, Transaction, Customer, History } = require("../models");
 
 class TextHandler {
   static async getSaldo(card, text) {
     const balance = text.match(/(\Rp )[\d,]+/g)[0].replace(/[\D]/g, "");
-    Product.hasMany(Transaction, { foreignKey: "product_id" });
-    Transaction.belongsTo(Customer, { foreignKey: "customer_id" });
 
     await Product.findOne({
       where: { code: "sal mobo" },

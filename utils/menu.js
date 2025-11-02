@@ -1,9 +1,5 @@
 const { Op } = require("sequelize");
-const History = require("../models/History");
-const Device = require("../models/Device");
-const Product = require("../models/Product");
-const Supplier = require("../models/Supplier");
-const Transaction = require("../models/Transaction");
+const { History, Device, Product, Supplier, Transaction } = require("../models");
 
 /**
  * Get user's menu

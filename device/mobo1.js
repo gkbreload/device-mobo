@@ -6,27 +6,7 @@ const {
   failToExecute,
   updateTransaction,
 } = require("../handlers/transactionHandler");
-const { update } = require("../models/Product");
 const card = process.env.MOBO1;
-// const { createPool } = require("mysql2/promise");
-// const { tgl, diff_seconds } = require("../helpers/utilities");
-// const endpoint_success =
-//   "https://admin.fnreload.com/api/v1/transactions/success";
-// const endpoint_pending =
-//   "https://admin.fnreload.com/api/v1/transactions/pending";
-// const endpoint_failed = "https://admin.fnreload.com/api/v1/transactions/failed";
-
-// const { DB_HOSTNAME, DB_USERNAME, DB_PASSWORD, DB_NAME, MOBO1 } = process.env;
-
-// const connection = createPool({
-//   host: DB_HOSTNAME,
-//   user: DB_USERNAME,
-//   password: DB_PASSWORD,
-//   database: DB_NAME,
-//   waitForConnections: true,
-//   connectionLimit: 10,
-//   queueLimit: 0,
-// });
 
 var gsmModem = new serialportgsm.Modem();
 let options = {
@@ -427,6 +407,7 @@ const transaction = function (find) {
 };
 
 async function autoUpdate() {
+  // console.log("Auto Update");
   setTimeout(autoUpdate, 3000);
   const find = await findWaitingList(card);
   if (find !== undefined && find.msg === "delsms") {
