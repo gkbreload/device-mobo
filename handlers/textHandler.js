@@ -53,13 +53,6 @@ class TextHandler {
       sn = text.match(/(\TID:)\d+/g)[0].replace(/[\D]/g, "");
     }
 
-    Transaction.belongsTo(Customer, {
-      foreignKey: "customer_id",
-    });
-    Transaction.belongsTo(Product, {
-      foreignKey: "product_id",
-    });
-
     await Transaction.findOne({
       where: { message: { [Op.like]: `%${tujuan}%` }, card: card, status: 3 },
       include: [
@@ -133,13 +126,6 @@ class TextHandler {
       tujuan = text.match(/(\ No )\d+/g)[0].replace(/[\D]/g, "");
     }
     tujuan = "0" + tujuan.substring(2);
-
-    Transaction.belongsTo(Customer, {
-      foreignKey: "customer_id",
-    });
-    Transaction.belongsTo(Product, {
-      foreignKey: "product_id",
-    });
 
     await Transaction.findOne({
       where: { message: { [Op.like]: `%${tujuan}%` }, card: card, status: 3 },
