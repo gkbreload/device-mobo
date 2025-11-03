@@ -111,7 +111,7 @@ class TextHandler {
             method: "telegram",
             status: "pending",
             flow: "out",
-            session: "mobogresik_bot",
+            session: "gresikmodul_bot",
           },
           { logging: false }
         );
