@@ -2,6 +2,7 @@ require("dotenv");
 const serialportgsm = require("serialport-gsm");
 const textHandler = require("../handlers/textHandler");
 const {
+  getPendingTransactions,
   findWaitingList,
   failToExecute,
   updateTransaction,
@@ -217,53 +218,134 @@ const initialize = function (port) {
   gsmModem.open(`${port}`, options);
 };
 
-autoUpdate();
+const deleteTransaction = function (row) {
+  return new Promise((resolve, reject) => {
+    gsmModem.deleteAllSimMessages((callback) => {
+      let msg;
+      if (callback.status == "success") {
+        msg = `SMS inbox telah berhasil dihapus`;
+        updateTransaction(row.id, msg);
+        console.log(`✅ SMS inbox ${card} telah berhasil dihapus.`);
+        resolve(callback);
+      } else {
+        msg = `SMS inbox gagal dihapus`;
+        updateTransaction(row.id, msg);
+        console.log(`❌ SMS inbox ${card} gagal dihapus.`);
+        reject(callback);
+      }
+    });
 
-const deleteTransaction = function (find) {
-  gsmModem.deleteAllSimMessages((result) => {
-    console.log(result);
-    let msg;
-    if (result.status == "success") {
-      msg = `SMS inbox telah berhasil dihapus`;
-      updateTransaction(find.id, msg);
-      console.log(`SMS inbox ${card} telah berhasil dihapus.`);
-    } else {
-      msg = `SMS inbox gagal dihapus`;
-      updateTransaction(find.id, msg);
-      console.log(`SMS inbox ${card} gagal dihapus.`);
-    }
+    gsmModem.once("error", (err) => {
+      console.error(`❌ Modem gagal untuk ID ${id}:`, err.message);
+      reject(err);
+    });
   });
 };
-const checkBalance = function (find) {
-  gsmModem.executeCommand(`AT+CUSD=1,"${find.cmd}",15`, (callback) => {
-    console.log(callback);
-    let cb = callback.data.result;
-    if (cb === " 4" || cb.includes("coba") || cb.includes("sementara")) {
-      return failToExecute(find.id, cb);
-    }
+const checkBalance = function (row) {
+  return new Promise((resolve, reject) => {
+    gsmModem.executeCommand(`AT+CUSD=1,"${row.message}",15`, (callback) => {
+      let cb = callback.data.result;
+      if (cb === " 4" || cb.includes("coba") || cb.includes("sementara")) {
+        failToExecute(row.id, cb);
+      }
+
+      if (callback.status == "success") {
+        console.log(`✅ Cek saldo ${card} selesai, tunggu balasan dari provider.`);
+        resolve(callback);
+      } else {
+        console.log(`❌ Cek saldo ${card} gagal diproses.`);
+        reject(callback);
+      }
+    });
+
+    gsmModem.once("error", (err) => {
+      console.error(`❌ Modem gagal untuk ID ${id}:`, err.message);
+      reject(err);
+    });
   });
 };
 
-const transaction = function (find) {
-  gsmModem.executeCommand(`AT+CUSD=1,"${find.cmd}",15`, (callback) => {
-    console.log(callback);
-    const cb = callback.data.result;
-    if (cb === " 4" || cb?.includes("coba") || cb?.includes("sementara")) {
-      return failToExecute(find.id, cb);
-    }
+const transaction = function (row) {
+  return new Promise((resolve, reject) => {
+    gsmModem.executeCommand(`AT+CUSD=1,"${row.message}",15`, (callback) => {
+      const cb = callback.data.result;
+      if (cb === " 4" || cb?.includes("coba") || cb?.includes("sementara")) {
+        failToExecute(row.id, cb);
+      }
+
+      if (callback.status == "success") {
+        console.log(`✅ Transaksi ${card} selesai, tunggu balasan dari provider.`);
+        resolve(callback);
+      } else {
+        console.log(`❌ Transaksi ${card} gagal diproses.`);
+        reject(callback);
+      }
+    });
+
+    gsmModem.once("error", (err) => {
+      console.error(`❌ Modem gagal untuk ID ${id}:`, err.message);
+      reject(err);
+    });
   });
 };
 
-async function autoUpdate() {
-  setTimeout(autoUpdate, 3000);
-  const find = await findWaitingList(card);
-  if (find !== undefined && find.msg === "delsms") {
-    return deleteTransaction(find);
-  } else if (find !== undefined && find.msg === "sal") {
-    return checkBalance(find);
-  } else if (find !== undefined) {
-    return transaction(find);
+let isProcessing = false;
+let queue = [];
+
+async function processTransaction(row) {
+  const id = row.id;
+  // console.log(`🔄 Memproses transaksi ID ${id}...`);
+  await Transaction.update(
+    {
+      reply: "Transaksi sudah diproses...",
+      status: 3,
+    },
+    { where: { id: id }, logging: false }
+  );
+
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  console.log(`🔌 Modem mulai memproses untuk ID ${id}...`);
+
+  if (row.Product.code.startsWith("delsms")) {
+    await deleteTransaction(row);
+  } else if (row.Product.code.startsWith("sal")) {
+    await checkBalance(row);
+  } else {
+    await transaction(row);
   }
 }
+
+async function processQueue() {
+  if (queue.length === 0) {
+    isProcessing = false;
+    startWatcher(card);
+    return;
+  }
+
+  const row = queue.shift();
+  await processTransaction(row);
+  await processQueue(); // lanjut ke item berikutnya
+}
+
+async function processing(card) {
+  if (isProcessing) return; // berhenti watch saat sedang proses
+
+  const rows = await getPendingTransactions(card);
+  if (rows.length === 0) return;
+
+  queue = rows;
+  isProcessing = true;
+  await processQueue();
+}
+
+async function startWatcher(card) {
+  if (!isProcessing) {
+    setTimeout(startWatcher, 3000, card);
+  }
+  // console.log(`🚀 Watcher ${card} aktif...`);
+  return await processing(card);
+}
+
+startWatcher(card);
 
 module.exports = { initialize };
