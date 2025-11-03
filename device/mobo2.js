@@ -3,7 +3,6 @@ const serialportgsm = require("serialport-gsm");
 const textHandler = require("../handlers/textHandler");
 const {
   getPendingTransactions,
-  findWaitingList,
   failToExecute,
   updateTransaction,
 } = require("../handlers/transactionHandler");
